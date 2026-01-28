@@ -1,7 +1,9 @@
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default {
+  base: './',
   build: {
-    target: 'esnext'
+    target: 'esnext',
+    outDir: 'dist'
   }
-});
+};
