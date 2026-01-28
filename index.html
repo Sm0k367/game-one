@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEURAL STATE | Persistent World</title>
+    <style>
+        body { 
+            margin: 0; 
+            background: #050505; 
+            color: #00ffcc; 
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden; 
+        }
+        #gui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            pointer-events: none;
+            text-shadow: 0 0 10px #00ffcc;
+        }
+        canvas { display: block; }
+        .stats { font-size: 10px; opacity: 0.7; }
+    </style>
+</head>
+<body>
+    <div id="gui">
+        <h1>NEURAL STATE v0.1.0</h1>
+        <div class="stats">SYSTEM: WEBGPU_ACTIVE</div>
+        <div class="stats">WORLD: PERSISTENT_GRID</div>
+    </div>
+    
+    <script type="module" src="/src/main.js"></script>
+</body>
+</html>
