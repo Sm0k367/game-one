@@ -9,34 +9,29 @@ async function init() {
     renderer = new THREE.WebGPURenderer({ antialias: true });
     await renderer.init();
     
-    // 1. SHARP RENDERER SETTINGS
+    // SHARP RENDERER: Full resolution, no blur
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio); // Sharp lines
-    // Crucial: No ToneMapping on the renderer so emissive values can go above 1.0
-    renderer.toneMapping = THREE.NoToneMapping; 
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.toneMapping = THREE.ReinhardToneMapping; // Prevents "Cyan Soup" washout
+    renderer.toneMappingExposure = 1.0;
     document.body.appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000105); // Near black
+    scene.background = new THREE.Color(0x000105); // Almost pure black
 
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 5, 100);
 
-    // 2. POST-PROCESSING (The "Sharp Neon" Config)
+    // SELECTIVE POST-PROCESSING
     postProcessing = new THREE.PostProcessing(renderer);
     const scenePass = pass(scene, camera);
     
-    /**
-     * Bloom Parameters for Sharpness:
-     * Threshold: 1.0 (Only colors > 1.0 glow)
-     * Strength: 1.5 (The "Punch")
-     * Radius: 0.1 (Tight glow, not a blur)
-     */
-    const bloomNode = bloom(scenePass, 1.5, 0.1, 1.0); 
+    // Strength: 1.0 (Balanced), Radius: 0.1 (Sharp), Threshold: 0.9 (Only Neon Glows)
+    const bloomNode = bloom(scenePass, 1.0, 0.1, 0.9); 
     postProcessing.outputNode = scenePass.add(bloomNode);
 
     createHorizonSun();
-    createSharpGrid();
+    createCyberGrid();
     createMegaCity();
     createShip();
 
@@ -49,64 +44,64 @@ async function init() {
 }
 
 function createHorizonSun() {
-    const sunGeo = new THREE.SphereGeometry(15, 64, 64);
+    const sunGeo = new THREE.CircleGeometry(10, 64); // Flat circle for sharper horizon look
     const sunMat = new THREE.MeshBasicNodeMaterial();
-    // Color is 10x brighter than white to force a sharp halo
-    sunMat.colorNode = vec3(10, 10, 10); 
+    sunMat.colorNode = vec3(2, 2, 2); // Bright white core
     const sun = new THREE.Mesh(sunGeo, sunMat);
-    sun.position.set(0, 2, -200); 
+    sun.position.set(0, 2, -180); 
     scene.add(sun);
 }
 
 function createMegaCity() {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshStandardNodeMaterial({ 
-        color: 0x000000,
-        metalness: 0,
-        roughness: 1
+        color: 0x000205,
+        roughness: 1,
+        metalness: 0
     });
     
-    // High-Intensity Neon Windows
+    // SHARP NEON STRIPES
     material.emissiveNode = Fn(() => {
-        const stripeY = positionLocal.y.mul(10.0).fract().step(0.95);
-        const neonColor = vec3(0.0, 10.0, 15.0); // Extreme HDR Cyan
+        const stripeY = positionLocal.y.mul(10).fract().step(0.95);
+        const neonColor = vec3(0.0, 5.0, 8.0); // Cyan intensity
         return neonColor.mul(stripeY);
     })();
 
     const mesh = new THREE.InstancedMesh(geometry, material, 1000);
     const dummy = new THREE.Object3D();
     for (let i = 0; i < 1000; i++) {
-        const x = (Math.random() - 0.5) * 250;
+        const x = (Math.random() - 0.5) * 200;
         const z = (Math.random() - 0.5) * 500;
-        if (Math.abs(x) < 20) continue;
+        if (Math.abs(x) < 20) continue; 
         dummy.position.set(x, 0, z);
-        dummy.scale.set(5, Math.random() * 80 + 10, 5);
+        dummy.scale.set(4, Math.random() * 80 + 10, 4);
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
     }
     scene.add(mesh);
 }
 
-function createSharpGrid() {
-    const gridGeo = new THREE.PlaneGeometry(800, 800, 160, 160);
+function createCyberGrid() {
+    const gridGeo = new THREE.PlaneGeometry(800, 800, 150, 150);
     const gridMat = new THREE.MeshBasicNodeMaterial({ wireframe: true });
-    // HDR Blue (Values > 1.0)
-    gridMat.colorNode = vec3(0.0, 2.0, 5.0); 
+    // Keep grid lines thin and glowing blue
+    gridMat.colorNode = vec3(0.0, 0.5, 1.0).mul(2); 
     const grid = new THREE.Mesh(gridGeo, gridMat);
     grid.rotation.x = -Math.PI / 2;
     scene.add(grid);
 }
 
 function createShip() {
-    const shipGeo = new THREE.BoxGeometry(1.5, 0.4, 2.5);
+    const shipGeo = new THREE.ConeGeometry(0.8, 3, 4);
+    shipGeo.rotateX(Math.PI / 2);
     const shipMat = new THREE.MeshStandardNodeMaterial({ color: 0x111111 });
-    shipMat.emissiveNode = vec3(20, 5, 0); // Blinding orange engine
+    shipMat.emissiveNode = vec3(10, 2, 0); // Orange Thrusters
     ship = new THREE.Mesh(shipGeo, shipMat);
     scene.add(ship);
 }
 
 function animate() {
-    camera.position.z -= 0.4;
+    camera.position.z -= 0.5; // Fast travel
     if (camera.position.z < -400) camera.position.z = 400;
 
     if (ship) {
