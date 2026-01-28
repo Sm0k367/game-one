@@ -2,94 +2,27 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEURAL STATE v0.1.0</title>
+    <title>NEURAL STATE</title>
     <style>
-        :root {
-            --neon-cyan: #00f2ff;
-            --neon-orange: #ff6a00;
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Inter', sans-serif; }
+        #ui {
+            position: fixed; top: 30px; left: 30px;
+            color: #00f2ff; text-shadow: 0 0 15px #00f2ff;
+            pointer-events: none; letter-spacing: 4px;
         }
-
-        body { 
-            margin: 0; 
-            background: #000; 
-            overflow: hidden; 
-            font-family: 'Courier New', Courier, monospace;
-            text-transform: uppercase;
-        }
-
-        canvas { display: block; }
-
-        /* 1. THE SCANLINE & CRT EFFECT */
-        #overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
+        .vignette {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.9) 150%);
             pointer-events: none;
-            background: linear-gradient(
-                rgba(18, 16, 16, 0) 50%, 
-                rgba(0, 0, 0, 0.2) 50%
-            ), linear-gradient(
-                90deg, 
-                rgba(255, 0, 0, 0.05), 
-                rgba(0, 255, 0, 0.02), 
-                rgba(0, 0, 255, 0.05)
-            );
-            background-size: 100% 4px, 3px 100%;
-            z-index: 10;
-        }
-
-        /* 2. THE VIGNETTE (Dark edges for focus) */
-        #vignette {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            background: radial-gradient(circle, transparent 40%, rgba(0,0,0,0.8) 120%);
-            z-index: 11;
-        }
-
-        /* 3. THE HUD ELEMENTS */
-        .hud {
-            position: fixed;
-            z-index: 12;
-            color: var(--neon-cyan);
-            text-shadow: 0 0 10px var(--neon-cyan);
-            padding: 20px;
-            letter-spacing: 2px;
-        }
-
-        .top-left { top: 0; left: 0; }
-        .bottom-right { bottom: 0; right: 0; text-align: right; }
-
-        h1 { margin: 0; font-size: 28px; font-weight: 900; }
-        p { margin: 5px 0; font-size: 12px; opacity: 0.8; }
-
-        .glitch-anim {
-            animation: glitch 2s infinite;
-        }
-
-        @keyframes glitch {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; transform: skewX(2deg); }
-            51% { opacity: 1; transform: skewX(0deg); }
-            100% { opacity: 1; }
         }
     </style>
 </head>
 <body>
-    <div id="overlay"></div>
-    <div id="vignette"></div>
-
-    <div class="hud top-left">
-        <h1 class="glitch-anim">NEURAL STATE v0.1.0</h1>
-        <p>SYSTEM: WEBGPU_ACTIVE</p>
-        <p>WORLD: PERSISTENT_GRID</p>
+    <div id="ui">
+        <div style="font-size: 10px; opacity: 0.6;">NETWORK_LINK: ESTABLISHED</div>
+        <div style="font-size: 24px; font-weight: 900;">NEURAL STATE v0.1.2</div>
     </div>
-
-    <div class="hud bottom-right">
-        <p>VELOCITY: <span id="speed-val">0.60</span> MACH</p>
-        <p>COORDS: <span id="coord-val">0.00, 0.00</span></p>
-    </div>
-
+    <div class="vignette"></div>
     <script type="module" src="/src/main.js"></script>
 </body>
 </html>
