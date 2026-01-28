@@ -1,102 +1,106 @@
 import * as THREE from 'three/webgpu';
-import { Fn, positionLocal, vec3, time as tslTime } from 'three/tsl';
+import { Fn, positionLocal, vec3, time as tslTime, uv, float } from 'three/tsl';
 import { PersistenceManager } from './persistence.js';
 
-let renderer, scene, camera, instancedMesh;
+let renderer, scene, camera, postProcessing;
 let lastSave = 0;
 
 async function init() {
-    // 1. Initialize Renderer with explicit Fallback
+    // 1. Core WebGPU Setup
     renderer = new THREE.WebGPURenderer({ antialias: true });
-    
-    try {
-        await renderer.init();
-    } catch (e) {
-        console.warn("WebGPU init failed, using WebGL fallback", e);
-    }
-    
+    await renderer.init();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
-    // 2. Scene Setup
+    // 2. Scene Aesthetic
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020202);
-    scene.fog = new THREE.Fog(0x020202, 10, 60);
+    scene.background = new THREE.Color(0x020308); // Deep Cyber-Blue
+    scene.fog = new THREE.Fog(0x020308, 20, 100);
 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    
+    camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     const savedState = PersistenceManager.load('last_pos');
-    camera.position.set(0, 5, savedState ? savedState.z : 10);
-    camera.lookAt(0, 2, 0);
+    camera.position.set(0, 4, savedState ? savedState.z : 50);
 
-    // 3. Lighting (Crucial for WebGPU)
-    const sun = new THREE.DirectionalLight(0x00ffcc, 5);
-    sun.position.set(5, 10, 7);
-    scene.add(sun);
-    scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+    // 3. Post-Processing (The "Mind-Blowing" Glow)
+    postProcessing = new THREE.PostProcessing(renderer);
+    const scenePass = postProcessing.addScenePass(scene, camera);
+    
+    // Add Bloom for that Neon "GTA-Future" look
+    const bloom = postProcessing.addBloomPass();
+    bloom.strength = 1.5;
+    bloom.radius = 0.5;
 
-    // 4. Create the City
-    createWorld();
+    // 4. World Geometry
+    createGrid();
+    createBuildings();
 
-    // 5. Action-Packed Loop
+    // 5. Lighting
+    const neonSun = new THREE.DirectionalLight(0x00ffff, 10);
+    neonSun.position.set(0, 10, -50);
+    scene.add(neonSun);
+
     renderer.setAnimationLoop((timestamp) => animate(timestamp));
 }
 
-function createWorld() {
-    const gridSize = 60; // Slightly smaller for better mobile performance
-    const spacing = 3;
+function createGrid() {
+    // Persistent Wireframe Floor
+    const gridGeo = new THREE.PlaneGeometry(200, 200, 50, 50);
+    const gridMat = new THREE.MeshBasicNodeMaterial();
+    gridMat.wireframe = true;
     
+    // TSL logic to make the grid "pulse" with the music of the city
+    gridMat.colorNode = Fn(() => {
+        const dist = positionLocal.z.add(tslTime.mul(5.0)).fract();
+        return vec3(0.0, 0.2, 0.5).mul(dist);
+    })();
+
+    const grid = new THREE.Mesh(gridGeo, gridMat);
+    grid.rotation.x = -Math.PI / 2;
+    scene.add(grid);
+}
+
+function createBuildings() {
+    const count = 1500;
     const geometry = new THREE.BoxGeometry(1, 1, 1);
-    const material = new THREE.MeshStandardNodeMaterial();
     
-    // TSL Shader Logic: Reactive Building Heights
-    material.positionNode = Fn(() => {
-        return vec3(positionLocal.x, positionLocal.y.mul(2.0), positionLocal.z);
+    // The "Neural" Material - Glowing Windows
+    const material = new THREE.MeshStandardNodeMaterial();
+    material.colorNode = vec3(0.01, 0.01, 0.05); // Dark base
+    
+    // Emissive logic using TSL (Creates the neon stripes)
+    material.emissiveNode = Fn(() => {
+        const stripes = positionLocal.y.mul(10.0).fract().step(0.8);
+        return vec3(0.0, 1.0, 1.0).mul(stripes).mul(tslTime.sin().add(1.5));
     })();
 
-    material.colorNode = Fn(() => {
-        const pulse = tslTime.sin().add(1.2).mul(0.5);
-        return vec3(0.0, 1.0, 0.8).mul(pulse);
-    })();
-
-    instancedMesh = new THREE.InstancedMesh(geometry, material, gridSize * gridSize);
+    const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
     const dummy = new THREE.Object3D();
 
-    let i = 0;
-    for (let x = 0; x < gridSize; x++) {
-        for (let z = 0; z < gridSize; z++) {
-            dummy.position.set((x - gridSize / 2) * spacing, 0, (z - gridSize / 2) * spacing);
-            const h = Math.random() * 8 + 1;
-            dummy.scale.set(1.2, h, 1.2);
-            dummy.updateMatrix();
-            instancedMesh.setMatrixAt(i++, dummy.matrix);
-        }
-    }
+    for (let i = 0; i < count; i++) {
+        const x = (Math.random() - 0.5) * 100;
+        const z = (Math.random() - 0.5) * 200;
+        if (Math.abs(x) < 8) continue; // Keep a "Highway" clear in the middle
 
+        dummy.position.set(x, 0, z);
+        dummy.scale.set(2, Math.random() * 20 + 2, 2);
+        dummy.updateMatrix();
+        instancedMesh.setMatrixAt(i, dummy.matrix);
+    }
     scene.add(instancedMesh);
 }
 
 function animate(timestamp) {
-    // Forward movement
-    camera.position.z -= 0.15;
+    camera.position.z -= 0.15; // Smooth fly-through
+    if (camera.position.z < -100) camera.position.z = 100;
 
-    // Infinite Loop logic
-    if (camera.position.z < -80) camera.position.z = 80;
-
-    // Auto-save
+    // Persistence save
     if (timestamp - lastSave > 5000) {
         PersistenceManager.save('last_pos', { z: camera.position.z });
         lastSave = timestamp;
     }
 
-    renderer.render(scene, camera);
+    postProcessing.render();
 }
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});
 
 init();
