@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { Fn, positionLocal, vec3, time as tslTime, pass, bloom, colorAdust, mix, uv, fract, floor, hash } from 'three/tsl';
+import { Fn, positionLocal, vec3, time as tslTime, pass, bloom, hash, floor, fract, mix } from 'three/tsl';
 import { PersistenceManager } from './persistence.js';
 
 let renderer, scene, camera, postProcessing, ship;
@@ -11,31 +11,29 @@ async function init() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     
-    // AgX is the "Secret Sauce" for the cinematic look - it prevents the cyan blowout
+    // AgX prevents the "Cyan Soup" effect by handling high brightness correctly
     renderer.toneMapping = THREE.AgXToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.toneMappingExposure = 1.0;
     document.body.appendChild(renderer.domElement);
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x000205);
-    // Darker, tighter fog to create depth silhouettes
-    scene.fog = new THREE.Fog(0x000205, 5, 120);
+    scene.background = new THREE.Color(0x000103);
+    scene.fog = new THREE.Fog(0x000103, 5, 130);
 
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 6, 100);
 
-    // 1. ADVANCED POST-PROCESSING
+    // POST-PROCESSING: THE "CINEMATIC" STACK
     postProcessing = new THREE.PostProcessing(renderer);
     const scenePass = pass(scene, camera);
     
-    // Layered Bloom: Sharp threshold (0.95) means ONLY the hottest neon glows
-    const bloomNode = bloom(scenePass, 1.2, 0.15, 0.95);
+    // Tight Bloom: Only the neon windows and engine will glow
+    const bloomNode = bloom(scenePass, 1.5, 0.1, 0.9);
     postProcessing.outputNode = scenePass.add(bloomNode);
 
-    // 2. THE WORLD
-    createCinematicSun();
+    createHorizonSun();
     createCyberGrid();
-    createDetailedBuildings();
+    createDetailedMegaCity();
     createHeroShip();
 
     window.addEventListener('pointermove', (e) => {
@@ -46,31 +44,28 @@ async function init() {
     renderer.setAnimationLoop(() => animate());
 }
 
-function createDetailedBuildings() {
-    // Instead of one box, we use varied heights and a complex TSL material
-    const count = 800;
+function createDetailedMegaCity() {
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshStandardNodeMaterial({ color: 0x010102 });
 
-    // TSL Shader: Procedural Window Grid with Random Flicker
+    // TSL Shader: Sharp Grid Windows
     material.emissiveNode = Fn(() => {
-        const p = positionLocal.xy.mul(vec3(8, 15, 1)); // Window density
-        const grid = fract(p).step(0.85); // Sharp window edges
-        const id = hash(floor(p)); // Unique ID for every window
+        const p = positionLocal.xy.mul(vec3(10, 18, 1)); 
+        const grid = fract(p).step(0.88); 
+        const id = hash(floor(p));
         
-        const flicker = tslTime.mul(id.mul(2)).sin().add(1.5);
-        const neonCyan = vec3(0.0, 4.0, 10.0);
-        const neonPink = vec3(8.0, 0.0, 5.0);
+        const flicker = tslTime.mul(id.mul(3)).sin().add(1.2);
+        const neonCyan = vec3(0.0, 5.0, 10.0);
+        const neonPink = vec3(10.0, 0.0, 5.0);
         
-        // Randomly mix Cyan and Pink windows like the target image
-        const color = mix(neonCyan, neonPink, id.step(0.8));
-        return color.mul(grid).mul(flicker).mul(0.6);
+        const color = mix(neonCyan, neonPink, id.step(0.85));
+        return color.mul(grid).mul(flicker).mul(0.5);
     })();
 
-    const mesh = new THREE.InstancedMesh(geometry, material, count);
+    const mesh = new THREE.InstancedMesh(geometry, material, 1000);
     const dummy = new THREE.Object3D();
-    for (let i = 0; i < count; i++) {
-        const x = (Math.random() - 0.5) * 250;
+    for (let i = 0; i < 1000; i++) {
+        const x = (Math.random() - 0.5) * 300;
         const z = (Math.random() - 0.5) * 600;
         if (Math.abs(x) < 25) continue;
         
@@ -82,73 +77,54 @@ function createDetailedBuildings() {
     scene.add(mesh);
 }
 
-function createCinematicSun() {
+function createHorizonSun() {
     const sunGeo = new THREE.SphereGeometry(30, 64, 64);
     const sunMat = new THREE.MeshBasicNodeMaterial();
-    sunMat.colorNode = vec3(15, 15, 20); // Blinding white-blue
+    sunMat.colorNode = vec3(10, 10, 15); // Pure white-blue intensity
     const sun = new THREE.Mesh(sunGeo, sunMat);
-    sun.position.set(0, -10, -280); // Lowered for that horizon look
+    sun.position.set(0, -10, -280); 
     scene.add(sun);
 }
 
 function createCyberGrid() {
     const gridGeo = new THREE.PlaneGeometry(1000, 1000, 200, 200);
     const gridMat = new THREE.MeshBasicNodeMaterial({ wireframe: true });
-    gridMat.colorNode = vec3(0.0, 0.3, 1.0).mul(2); 
+    gridMat.colorNode = vec3(0.0, 0.5, 2.0); 
     const grid = new THREE.Mesh(gridGeo, gridMat);
     grid.rotation.x = -Math.PI / 2;
     scene.add(grid);
 }
 
 function createHeroShip() {
-    // A more complex ship "silhouette" using grouped geometry
     const group = new THREE.Group();
-    
     const body = new THREE.Mesh(
         new THREE.BoxGeometry(2, 0.4, 4),
         new THREE.MeshStandardNodeMaterial({ color: 0x050505 })
     );
     
-    const wingMat = new THREE.MeshStandardNodeMaterial({ color: 0x050505 });
-    wingMat.emissiveNode = vec3(0, 10, 15); // Glowing wing tips
-    
-    const leftWing = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 2), wingMat);
-    leftWing.position.set(-2, 0, 0);
-    leftWing.rotation.z = 0.2;
-    
-    const rightWing = leftWing.clone();
-    rightWing.position.x = 2;
-    rightWing.rotation.z = -0.2;
-
-    const thruster = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.4, 0.6, 1),
-        new THREE.MeshBasicNodeMaterial({ color: new THREE.Color(20, 5, 0) })
-    );
+    const engineMat = new THREE.MeshBasicNodeMaterial();
+    engineMat.colorNode = vec3(15, 5, 0); // Bright Orange Thruster
+    const thruster = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, 1.5), engineMat);
     thruster.rotation.x = Math.PI / 2;
-    thruster.position.z = 2;
+    thruster.position.z = 2.5;
 
-    group.add(body, leftWing, rightWing, thruster);
+    group.add(body, thruster);
     ship = group;
     scene.add(ship);
 }
 
 function animate() {
-    // 1. THE "JUICE": Camera FOV breathing based on movement
-    camera.position.z -= 0.8;
+    camera.position.z -= 0.8; 
     if (camera.position.z < -400) camera.position.z = 400;
-    
-    camera.fov = 75 + (Math.sin(tslTime.value) * 2); // Subtle speed-breathing
-    camera.updateProjectionMatrix();
 
     if (ship) {
-        const targetX = pointer.x * 30;
+        const targetX = pointer.x * 35;
         const targetY = (pointer.y * 15) + 6;
         
         ship.position.x = THREE.MathUtils.lerp(ship.position.x, targetX, 0.08);
         ship.position.y = THREE.MathUtils.lerp(ship.position.y, targetY, 0.08);
         ship.position.z = camera.position.z - 30;
         
-        // Banking (Rotation)
         ship.rotation.z = (ship.position.x - targetX) * 0.1;
         ship.rotation.y = (ship.position.x - targetX) * 0.05;
     }
