@@ -6,14 +6,12 @@ let renderer, scene, camera, postProcessing, ship;
 const pointer = new THREE.Vector2();
 
 async function init() {
-    // 1. Core WebGPU Setup
     renderer = new THREE.WebGPURenderer({ antialias: true });
     await renderer.init();
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     document.body.appendChild(renderer.domElement);
 
-    // 2. Cinematic Atmosphere
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x000205); 
     scene.fog = new THREE.Fog(0x000205, 10, 150);
@@ -22,15 +20,15 @@ async function init() {
     const saved = PersistenceManager.load('last_pos');
     camera.position.set(0, 5, saved ? saved.z : 100);
 
-    // 3. POST-PROCESSING (The "Glow" Secret)
+    // 1. POST-PROCESSING: The "Cyberpunk Haze"
     postProcessing = new THREE.PostProcessing(renderer);
     const scenePass = pass(scene, camera);
     
-    // Add Bloom for that intense neon bleed
-    const bloomPass = bloom(scenePass, 1.8, 0.4, 0.05); 
-    postProcessing.outputNode = scenePass.add(bloomPass);
+    // High strength, low threshold = EVERYTHING GLOWS
+    const bloomNode = bloom(scenePass, 2.0, 0.5, 0.05); 
+    postProcessing.outputNode = scenePass.add(bloomNode);
 
-    // 4. World Geometry
+    // 2. Objects
     createHorizonSun();
     createMegaCity();
     createCyberGrid();
@@ -45,11 +43,12 @@ async function init() {
 }
 
 function createHorizonSun() {
-    const sunGeo = new THREE.SphereGeometry(20, 32, 32);
+    // A massive glowing core at the end of the world
+    const sunGeo = new THREE.SphereGeometry(25, 32, 32);
     const sunMat = new THREE.MeshBasicNodeMaterial();
-    sunMat.colorNode = vec3(1.0, 1.0, 1.0); // Pure white light
+    sunMat.colorNode = vec3(1.5, 1.5, 1.5); // Over-bright white for bloom
     const sun = new THREE.Mesh(sunGeo, sunMat);
-    sun.position.set(0, 5, -200); 
+    sun.position.set(0, 5, -250); 
     scene.add(sun);
 }
 
@@ -57,23 +56,22 @@ function createMegaCity() {
     const count = 1500;
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     const material = new THREE.MeshStandardNodeMaterial();
-    material.colorNode = vec3(0.01, 0.01, 0.03); 
+    material.colorNode = vec3(0.0, 0.0, 0.02); 
     
-    // Building Neon Stripes using TSL
     material.emissiveNode = Fn(() => {
-        const stripeY = positionLocal.y.mul(12.0).fract().step(0.9);
-        const neonColor = vec3(0.0, 0.8, 1.0); // Cyan
-        return neonColor.mul(stripeY).mul(2.0);
+        const stripeY = positionLocal.y.mul(15.0).fract().step(0.92);
+        const neonColor = vec3(0.0, 1.0, 1.0); // Cyan
+        return neonColor.mul(stripeY).mul(5.0); // High emissive intensity
     })();
 
     const mesh = new THREE.InstancedMesh(geometry, material, count);
     const dummy = new THREE.Object3D();
     for (let i = 0; i < count; i++) {
         const x = (Math.random() - 0.5) * 200;
-        const z = (Math.random() - 0.5) * 500;
-        if (Math.abs(x) < 15) continue;
+        const z = (Math.random() - 0.5) * 600;
+        if (Math.abs(x) < 18) continue; // Clear flight path
         dummy.position.set(x, 0, z);
-        dummy.scale.set(4, Math.random() * 60 + 5, 4);
+        dummy.scale.set(4, Math.random() * 70 + 5, 4);
         dummy.updateMatrix();
         mesh.setMatrixAt(i, dummy.matrix);
     }
@@ -81,32 +79,33 @@ function createMegaCity() {
 }
 
 function createCyberGrid() {
-    const gridGeo = new THREE.PlaneGeometry(500, 500, 100, 100);
+    const gridGeo = new THREE.PlaneGeometry(600, 600, 120, 120);
     const gridMat = new THREE.MeshBasicNodeMaterial();
     gridMat.wireframe = true;
-    gridMat.colorNode = vec3(0.0, 0.3, 0.6).mul(tslTime.sin().add(1.2));
+    gridMat.colorNode = vec3(0.0, 0.4, 0.8).mul(tslTime.sin().add(1.5));
     const grid = new THREE.Mesh(gridGeo, gridMat);
     grid.rotation.x = -Math.PI / 2;
     scene.add(grid);
 }
 
 function createPlayerShip() {
-    const shipGeo = new THREE.BoxGeometry(2, 0.5, 3);
+    const shipGeo = new THREE.BoxGeometry(1.5, 0.4, 2.5);
     const shipMat = new THREE.MeshStandardNodeMaterial();
-    shipMat.colorNode = vec3(0.1, 0.1, 0.1);
-    shipMat.emissiveNode = vec3(1.0, 0.4, 0.0).mul(4); // Glowing orange engine
+    shipMat.colorNode = vec3(0.05, 0.05, 0.05);
+    shipMat.emissiveNode = vec3(1.0, 0.3, 0.0).mul(10); // Blinding engine glow
     ship = new THREE.Mesh(shipGeo, shipMat);
     scene.add(ship);
 }
 
 function animate(time) {
-    camera.position.z -= 0.25; 
-    if (camera.position.z < -250) camera.position.z = 250;
+    camera.position.z -= 0.3; // Speed up the travel
+    if (camera.position.z < -300) camera.position.z = 300;
 
     if (ship) {
-        ship.position.x = THREE.MathUtils.lerp(ship.position.x, pointer.x * 20, 0.1);
-        ship.position.y = THREE.MathUtils.lerp(ship.position.y, (pointer.y * 10) + 4, 0.1);
-        ship.position.z = camera.position.z - 20;
+        ship.position.x = THREE.MathUtils.lerp(ship.position.x, pointer.x * 25, 0.08);
+        ship.position.y = THREE.MathUtils.lerp(ship.position.y, (pointer.y * 12) + 5, 0.08);
+        ship.position.z = camera.position.z - 15;
+        ship.rotation.z = (ship.position.x - (pointer.x * 25)) * -0.05;
     }
 
     postProcessing.render();
