@@ -2,30 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NEURAL STATE</title>
+    <title>Cyber Racer WebGPU</title>
     <style>
-        body { margin: 0; background: #000; overflow: hidden; font-family: sans-serif; }
-        #ui {
-            position: fixed; top: 30px; left: 30px;
-            color: #00f2ff; text-shadow: 0 0 15px #00f2ff;
-            pointer-events: none; letter-spacing: 4px;
-            z-index: 100;
-        }
-        .vignette {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.9) 150%);
-            pointer-events: none;
-            z-index: 10;
-        }
+        body { margin: 0; background: #000; overflow: hidden; }
+        #ui { position: absolute; top: 20px; left: 20px; color: #0ff; font-family: 'Courier New', monospace; text-shadow: 0 0 10px #0ff; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="ui">
-        <div style="font-size: 10px; opacity: 0.6;">SYSTEM_LINK: ACTIVE</div>
-        <div style="font-size: 24px; font-weight: 900;">NEURAL STATE v0.1.5</div>
-    </div>
-    <div class="vignette"></div>
-    <script type="module" src="/src/main.js"></script>
+    <div id="ui"><h1>CORE_STABILIZED: 100%</h1><p>SPEED: <span id="speed">0</span> KM/H</p></div>
+    <script type="module" src="/main.js"></script>
 </body>
 </html>
