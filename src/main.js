@@ -15,25 +15,25 @@ async function init() {
 
     // 2. Scene Aesthetic
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x010205); // Deeper black-blue
+    scene.background = new THREE.Color(0x010205); 
     scene.fog = new THREE.Fog(0x010205, 20, 100);
 
     camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     const savedState = PersistenceManager.load('last_pos');
     camera.position.set(0, 4, savedState ? savedState.z : 50);
 
-    // 3. MODERN POST-PROCESSING (2026 Standard)
-    // Instead of addPass, we define an outputNode chain
+    // 3. CORRECT POST-PROCESSING (r171 Standard)
     postProcessing = new THREE.PostProcessing(renderer);
     
-    // Create the base scene pass
+    // Create the scene texture node
     const scenePass = pass(scene, camera);
     
-    // Apply Bloom directly to the scene pass using the bloom() node
-    const bloomPass = bloom(scenePass, 1.5, 0.5, 0.1); 
+    // Chain the bloom effect node to the scene pass
+    // Parameters: input, strength, radius, threshold
+    const bloomNode = bloom(scenePass, 1.5, 0.5, 0.1); 
     
-    // Set the final output of the post-processing chain
-    postProcessing.outputNode = bloomPass;
+    // Set the final chain to the output
+    postProcessing.outputNode = bloomNode;
 
     // 4. World Geometry
     createGrid();
@@ -100,7 +100,7 @@ function animate(timestamp) {
         lastSave = timestamp;
     }
 
-    // Use postProcessing.render() instead of renderer.render()
+    // Crucial: Use postProcessing.render() instead of renderer.render()
     postProcessing.render();
 }
 
